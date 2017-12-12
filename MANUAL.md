@@ -1,8 +1,8 @@
 # Exonum-time manual
 
-Exonum-time is the time oracle service for Exonum blockchain framework.
-This service allows to find time 
-and submit it from the external world to the blockchain 
+Exonum-time is a time oracle service for Exonum blockchain framework.
+This service allows to determine time, 
+import it from the external world to the blockchain 
 and keep its current value in the blockchain. 
 
 Below is a simple user guide.
@@ -15,14 +15,14 @@ Below is a simple user guide.
 
 ## Installation
 
-Add a following line to the `Cargo.toml`:
+Add the following line to the `Cargo.toml`:
 
 ```toml
-[dev-dependecies]
-exonum-time = "1.0"
+[dependecies]
+exonum-time = "0.1.0"
 ```
 
-And activate service in main project file:
+And activate service in the main project file:
 
 ```rust
 extern crate exonum;
@@ -42,11 +42,11 @@ fn main() {
 ## Testing
 
 To verify the correct work of the service,
-you need to make sure that transactions are created after the commit of block
-and the time value, which is stored in the blockchain, is update.
-Fot this you can use public and private service API.
+you need to make sure that transactions are created after the block commit
+and the time value, which is stored in the blockchain, is updated.
+For this you can use public and private service API.
 
-For testing the service is used ['exonum-testkit'][exonum-testkit].
+For testing the service ['exonum-testkit'][exonum-testkit] is used.
 
 ```rust
 extern crate exonum;
@@ -56,7 +56,7 @@ use std::time::{self, SystemTime};
 use exonum::helpers::Height;
 use exonum_time::{TimeService, TimeSchema, Time, TimeProvider};
 use exonum_testkit::TestKitBuilder;
-//A struct that provides the node with a current time.
+// A struct that provides the node with the current time.
 #[derive(Debug)]
 struct MyTimeProvider;
 impl TimeProvider for MyTimeProvider {
@@ -66,19 +66,19 @@ impl TimeProvider for MyTimeProvider {
 }
 #[test]
 fn test_exonum_time_service() {
-    // Create simple testkit newtwork.
+    // Create a simple testkit network.
     let mut testkit = TestKitBuilder::validator()
         .with_service(TimeService::with_provider(
             Box::new(MyTimeProvider) as Box<TimeProvider>,
         ))
         .create();
-    // Get validator public key.
+    // Get the validator public key.
     let validator_public_key = &testkit.network().validators().to_vec()[0]
         .public_keys()
         .service_key;
     let snapshot = testkit.snapshot();
     let schema = TimeSchema::new(snapshot);
-    // Check that blockchain does not contain time.
+    // Check that the blockchain does not contain time.
     assert_eq!(schema.time().get(), None);
     // Check that the time for the validator is unknown.
     assert_eq!(schema.validators_time().get(validator_public_key), None);
@@ -86,7 +86,7 @@ fn test_exonum_time_service() {
     testkit.create_blocks_until(Height(2));
     let snapshot = testkit.snapshot();
     let schema = TimeSchema::new(snapshot);
-    // Check that the time in blockchain and for the validator has been update.
+    // Check that the time in the blockchain and for the validator has been updated.
     assert_eq!(schema.time().get(), Some(Time::new(time::UNIX_EPOCH)));
     assert_eq!(
         schema.validators_time().get(validator_public_key),
