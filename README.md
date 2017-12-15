@@ -51,6 +51,7 @@ use exonum_time::{TimeService, TimeProvider};
  
 #[derive(Debug)]
 struct MyTimeProvider;
+ 
 impl TimeProvider for MyTimeProvider {
     fn current_time(&self) -> SystemTime {
         UNIX_EPOCH
@@ -59,6 +60,7 @@ impl TimeProvider for MyTimeProvider {
  
 #[derive(Debug)]
 struct MyTimeServiceFactory;
+ 
 impl ServiceFactory for MyTimeServiceFactory {
     fn make_service(&mut self, _: &Context) -> Box<Service> {
         Box::new(TimeService::with_provider(
