@@ -24,10 +24,10 @@ And activate service in the main project file:
 ```rust
 extern crate exonum;
 extern crate exonum_time;
-
+ 
 use exonum::helpers::fabric::NodeBuilder;
 use exonum_time::TimeServiceFactory;
-
+ 
 fn main() {
     exonum::helpers::init_logger().unwrap();
     NodeBuilder::new()
@@ -42,13 +42,13 @@ in the main project file:
 ```rust
 extern crate exonum;
 extern crate exonum_time;
-
+ 
 use std::time::{UNIX_EPOCH, SystemTime};
 use exonum::blockchain::Service;
 use exonum::helpers::fabric::NodeBuilder;
 use exonum::helpers::fabric::{ServiceFactory, Context};
 use exonum_time::{TimeService, TimeProvider};
-
+ 
 #[derive(Debug)]
 struct MyTimeProvider;
 impl TimeProvider for MyTimeProvider {
@@ -56,7 +56,7 @@ impl TimeProvider for MyTimeProvider {
         UNIX_EPOCH
     }
 }
-
+ 
 #[derive(Debug)]
 struct MyTimeServiceFactory;
 impl ServiceFactory for MyTimeServiceFactory {
@@ -66,7 +66,7 @@ impl ServiceFactory for MyTimeServiceFactory {
         ))
     }
 }
-
+ 
 fn main() {
     exonum::helpers::init_logger().unwrap();
     NodeBuilder::new()
