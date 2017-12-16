@@ -63,7 +63,7 @@ impl Transaction for TxMarker {
         {
             let time_schema = TimeSchema::new(&view);
             // The time in the transactions should be less than in the blockchain.
-            match time_schema.time().get() {
+            match time_schema.current_time().get() {
                 Some(ref current_time) if current_time.time() < self.time() => {
                     return;
                 }
@@ -126,7 +126,7 @@ fn main() {
     let snapshot = testkit.snapshot();
     let time_schema = TimeSchema::new(&snapshot);
     assert_eq!(
-        time_schema.time().get(),
+        time_schema.current_time().get(),
         Some(Time::new(UNIX_EPOCH + Duration::new(10, 0)))
     );
     // Create few transactions.

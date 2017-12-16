@@ -7,10 +7,10 @@ This service allows to determine time,
 import it from the external world to the blockchain 
 and keep its current value in the blockchain.
 
-* [Installations](#installations)
+* [Installation](#installation)
 * [License](#license)
 
-## Installations
+## Installation
 
 Add the following line to the `Cargo.toml`:
 
