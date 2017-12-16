@@ -27,28 +27,28 @@ which must be executed no later than the specified time
 
 ```rust
 message! {
-	struct Tx {
-		…
-		field time: SystemTime	 [00 => 12]
-		…
-	}
+    struct Tx {
+        …
+        field time: SystemTime	 [00 => 12]
+        …
+    }
 }
  
 impl Transaction for Tx {
-	…
-	fn execute(&self, view: &mut Fork) {
-		// Import schema.
-		let time_schema = TimeSchema::new(&view);
-		// The time in the transaction should be less than in the blockchain.
-		match time_schema.current_time().get() {
-			Some(ref current_time) if current_time.time() < self.time() => {
-				return;
-			}
-			…
-		}
-		…
-	}
-	… 
+    …
+    fn execute(&self, view: &mut Fork) {
+        // Import schema.
+        let time_schema = TimeSchema::new(&view);
+        // The time in the transaction should be less than in the blockchain.
+        match time_schema.current_time().get() {
+            Some(ref current_time) if current_time.time() < self.time() => {
+                return;
+            }
+            …
+        }
+        …
+    }
+    … 
 }
 ```
 
