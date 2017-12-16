@@ -227,7 +227,10 @@ fn test_selected_time_less_than_time_in_storage() {
     assert!(schema.current_time().get().is_some());
     assert!(schema.validators_time().get(pub_key_0).is_some());
     assert!(schema.validators_time().get(pub_key_1).is_none());
-    assert_eq!(schema.current_time().get(), schema.validators_time().get(pub_key_0));
+    assert_eq!(
+        schema.current_time().get(),
+        schema.validators_time().get(pub_key_0)
+    );
 
     if let Some(time_in_storage) = schema.current_time().get() {
         let time_tx = time_in_storage.time() - Duration::new(10, 0);
@@ -242,7 +245,10 @@ fn test_selected_time_less_than_time_in_storage() {
     assert!(schema.current_time().get().is_some());
     assert!(schema.validators_time().get(pub_key_0).is_some());
     assert!(schema.validators_time().get(pub_key_1).is_some());
-    assert_eq!(schema.current_time().get(), schema.validators_time().get(pub_key_0));
+    assert_eq!(
+        schema.current_time().get(),
+        schema.validators_time().get(pub_key_0)
+    );
 }
 
 #[test]

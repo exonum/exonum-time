@@ -175,7 +175,8 @@ impl Transaction for TxTime {
             _ => {
                 // Change the time in the storage.
                 schema.current_time_mut().set(Time::new(
-                    validators_time[max_byzantine_nodes],
+                    validators_time
+                        [max_byzantine_nodes],
                 ));
             }
         }
