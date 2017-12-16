@@ -36,7 +36,7 @@ fn main() {
 }
 ```
 
-To use your time provider, you need to implement it and create your own `ServiceFactory`
+To use your own time provider, you need to implement it and create your own `ServiceFactory`
 in the main project file:
 
 ```rust

@@ -14,166 +14,59 @@ Below is a simple user guide.
 
 ## Usage
 
-Below is an example of the implementation of a service that uses the time oracle.
-You can also look in the [`directory`](https://github.com/exonum/exonum-time/tree/master/examples).
-For testing the service [`exonum-testkit`][exonum-testkit] is used.
+The service data schema consists of two indexes:
+
++ **current_time: Entry&lt;Time>** - the consolidated time, which is stored in the blockchain,
++ **validators_time: MapIndex&lt;PublicKey, SystemTime>** - the last known local time on the nodes of the validators.
+
+Typical usage of the service boils down to importing the schema and calling its `current_time()` or `validators_time()` methods.
+
+Below is an example of a method for processing a transaction, 
+which must be executed no later than the specified time 
+(this time is written in the transaction body by a separate field):
 
 ```rust
-#[macro_use]
-extern crate exonum;
-extern crate exonum_time;
-#[macro_use]
-extern crate exonum_testkit;
-extern crate serde_json;
-extern crate serde;
-  
-use std::time::{UNIX_EPOCH, SystemTime, Duration};
-use exonum::blockchain::{Service, Transaction};
-use exonum::crypto::{gen_keypair, PublicKey};
-use exonum::encoding;
-use exonum::helpers::Height;
-use exonum::messages::{Message, RawTransaction, FromRaw};
-use exonum::storage::{Fork, MapIndex, Snapshot};
-use exonum_time::{TimeService, TimeSchema, TimeProvider, Time};
-use exonum_testkit::TestKitBuilder;
- 
-const SERVICE_ID: u16 = 128;
-const SERVICE_NAME: &str = "marker";
-const TX_TIMESTAMP_ID: u16 = 0;
- 
-#[derive(Debug)]
-pub struct MarkerSchema<T> {
-    view: T,
-}
- 
-impl<T: AsRef<Snapshot>> MarkerSchema<T> {
-    pub fn new(view: T) -> Self {
-        MarkerSchema { view }
-    }
- 
-    pub fn marks(&self) -> MapIndex<&Snapshot, PublicKey, i32> {
-        MapIndex::new(format!("{}.marks", SERVICE_NAME), self.view.as_ref())
-    }
-}
- 
-impl<'a> MarkerSchema<&'a mut Fork> {
-    pub fn messages_mut(&mut self) -> MapIndex<&mut Fork, PublicKey, i32> {
-        MapIndex::new(format!("{}.marks", SERVICE_NAME), self.view)
-    }
-}
- 
 message! {
-    struct TxMarker {
-        const TYPE = SERVICE_ID;
-        const ID = TX_TIMESTAMP_ID;
-        const SIZE = 48;
- 
-        field from:     &PublicKey      [00 => 32]
-        field mark:     i32             [32 => 36]
-        field time:     SystemTime      [36 => 48]
-    }
+	struct Tx {
+		…
+		field time: SystemTime	 [00 => 12]
+		…
+	}
 }
  
-impl Transaction for TxMarker {
-    fn verify(&self) -> bool {
-        self.verify_signature(self.from())
-    }
- 
-    fn execute(&self, view: &mut Fork) {
-        {
-            let time_schema = TimeSchema::new(&view);
-            // The time in the transactions should be less than in the blockchain.
-            match time_schema.time().get() {
-                Some(ref current_time) if current_time.time() < self.time() => {
-                    return;
-                }
-                _ => {}
-            }
-        }
-        // Mark the node that generated the transaction.
-        let mut schema = MarkerSchema::new(view);
-        schema.messages_mut().put(self.from(), self.mark());
-    }
- 
-    fn info(&self) -> serde_json::Value {
-        serde_json::to_value(self).unwrap()
-    }
-}
- 
-struct MarkerService;
- 
-impl Service for MarkerService {
-    fn service_name(&self) -> &'static str {
-        SERVICE_NAME
-    }
- 
-    fn service_id(&self) -> u16 {
-        SERVICE_ID
-    }
- 
-    fn tx_from_raw(&self, raw: RawTransaction) -> Result<Box<Transaction>, encoding::Error> {
-        match raw.message_type() {
-            TX_TIMESTAMP_ID => Ok(Box::new(TxMarker::from_raw(raw)?)),
-            _ => {
-                let error =
-                    encoding::Error::IncorrectMessageType { message_type: raw.message_type() };
-                Err(error)
-            }
-        }
-    }
-}
- 
-#[derive(Debug)]
-struct MyTimeProvider;
- 
-impl TimeProvider for MyTimeProvider {
-    fn current_time(&self) -> SystemTime {
-        UNIX_EPOCH + Duration::new(10, 0)
-    }
-}
- 
-fn main() {
-    // Create testkit for network with one validator
-    let mut testkit = TestKitBuilder::validator()
-        .with_service(MarkerService)
-        .with_service(TimeService::with_provider(
-            Box::new(MyTimeProvider) as Box<TimeProvider>,
-        ))
-        .create();
-    // Create two blocks to set the time in the blockchain.
-    testkit.create_blocks_until(Height(2));
-    // Time, that is saved in storage, will have the value `UNIX_EPOCH + Duration::new(10, 0)`
-    let snapshot = testkit.snapshot();
-    let time_schema = TimeSchema::new(&snapshot);
-    assert_eq!(
-        time_schema.time().get(),
-        Some(Time::new(UNIX_EPOCH + Duration::new(10, 0)))
-    );
-    // Create few transactions.
-    let keypair1 = gen_keypair();
-    let keypair2 = gen_keypair();
-    let keypair3 = gen_keypair();
-    let tx1 = TxMarker::new(&keypair1.0, 1, UNIX_EPOCH, &keypair1.1);
-    let tx2 = TxMarker::new(
-        &keypair2.0,
-        2,
-        UNIX_EPOCH + Duration::new(20, 0),
-        &keypair2.1,
-    );
-    let tx3 = TxMarker::new(
-        &keypair3.0,
-        3,
-        UNIX_EPOCH + Duration::new(5, 0),
-        &keypair3.1,
-    );
-    testkit.create_block_with_transactions(txvec![tx1.clone(), tx2.clone(), tx3.clone()]);
-    // Check results.
-    let snapshot = testkit.snapshot();
-    let schema = MarkerSchema::new(snapshot);
-    assert_eq!(schema.marks().get(&keypair1.0), Some(1));
-    assert_eq!(schema.marks().get(&keypair2.0), None);
-    assert_eq!(schema.marks().get(&keypair3.0), Some(3));
+impl Transaction for Tx {
+	…
+	fn execute(&self, view: &mut Fork) {
+		// Import schema.
+		let time_schema = TimeSchema::new(&view);
+		// The time in the transaction should be less than in the blockchain.
+		match time_schema.current_time().get() {
+			Some(ref current_time) if current_time.time() < self.time() => {
+				return;
+			}
+			…
+		}
+		…
+	}
+	… 
 }
 ```
+
+Similarly to obtaining the consolidated time, 
+you can get the known time for the nodes of validators:
+
+```rust
+let time_schema = TimeSchema::new(&view);
+let validators_time = time_schema.validators_time().
+```
+
+The full implementation of the service, which uses the time oracle, 
+is in the [`directory`](https://github.com/exonum/exonum-time/tree/master/examples).
+For testing the service [`exonum-testkit`][exonum-testkit] is used.
+
+Also in the service the API for Read Requests is implemented.
+The time oracle has one endpoint in the Public API and one in the Private API:
++ `GET /current_time` - returns consolidated time through Public API;
++ `GET /validators_time` - returns the last known time on the nodes of the validators through Private API.
 
 [exonum-testkit]: https://github.com/exonum/exonum-testkit

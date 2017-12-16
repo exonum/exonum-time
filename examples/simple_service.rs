@@ -62,7 +62,7 @@ impl Transaction for TxMarker {
     fn execute(&self, view: &mut Fork) {
         {
             let time_schema = TimeSchema::new(&view);
-            // The time in the transactions should be less than in the blockchain.
+            // The time in the transaction should be less than in the blockchain.
             match time_schema.current_time().get() {
                 Some(ref current_time) if current_time.time() < self.time() => {
                     return;
