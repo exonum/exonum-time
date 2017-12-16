@@ -78,7 +78,7 @@ impl<T: AsRef<Snapshot>> TimeSchema<T> {
     }
 
     /// Returns stored `Time`.
-    pub fn time(&self) -> Entry<&Snapshot, Time> {
+    pub fn current_time(&self) -> Entry<&Snapshot, Time> {
         Entry::new(format!("{}.time", SERVICE_NAME), self.view.as_ref())
     }
 }
@@ -95,7 +95,7 @@ impl<'a> TimeSchema<&'a mut Fork> {
     /// Mutable reference to the ['time'][1] index.
     ///
     /// [1]: struct.TimeSchema.html#method.time
-    pub fn time_mut(&mut self) -> Entry<&mut Fork, Time> {
+    pub fn current_time_mut(&mut self) -> Entry<&mut Fork, Time> {
         Entry::new(format!("{}.time", SERVICE_NAME), self.view)
     }
 }
@@ -166,7 +166,7 @@ impl Transaction for TxTime {
         // Ordering time from highest to lowest.
         validators_time.sort_by(|a, b| b.cmp(a));
 
-        match schema.time().get() {
+        match schema.current_time().get() {
             // Selected time should be longer than the time in the storage.
             Some(ref current_time)
                 if current_time.time() >= validators_time[max_byzantine_nodes] => {
@@ -174,8 +174,9 @@ impl Transaction for TxTime {
             }
             _ => {
                 // Change the time in the storage.
-                schema.time_mut().set(Time::new(
-                    validators_time[max_byzantine_nodes],
+                schema.current_time_mut().set(Time::new(
+                    validators_time
+                        [max_byzantine_nodes],
                 ));
             }
         }
@@ -194,7 +195,7 @@ impl TimeApi {
     fn get_current_time(&self, _: &mut Request) -> IronResult<Response> {
         let view = self.blockchain.snapshot();
         let schema = TimeSchema::new(&view);
-        let current_time = schema.time().get();
+        let current_time = schema.current_time().get();
         self.ok_response(&serde_json::to_value(current_time).unwrap())
     }
 

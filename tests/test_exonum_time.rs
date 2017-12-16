@@ -1,3 +1,17 @@
+// Copyright 2017 The Exonum Team
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//   http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 extern crate exonum;
 extern crate exonum_time;
 #[macro_use]
@@ -5,13 +19,13 @@ extern crate exonum_testkit;
 #[macro_use]
 extern crate pretty_assertions;
 
-use std::time::{SystemTime, Duration};
+use std::time::{SystemTime, Duration, UNIX_EPOCH};
 
 use exonum::helpers::{Height, ValidatorId};
 use exonum::crypto::gen_keypair;
 
 use exonum_time::TimeSchema;
-use exonum_time::{TimeService, TxTime, Time};
+use exonum_time::{TimeService, TxTime, Time, TimeProvider};
 use exonum_testkit::{TestKitBuilder, TestNode};
 
 #[test]
@@ -42,7 +56,7 @@ fn test_exonum_time_service() {
             validators_time_storage.get(pub_key)
         );
     }
-    assert_eq!(schema.time().get(), None);
+    assert_eq!(schema.current_time().get(), None);
 
     // Add first transaction 'tx0' from first validator with time 'time0'.
     // After that validators time look like this:
@@ -70,7 +84,7 @@ fn test_exonum_time_service() {
             validators_time_storage.get(pub_key)
         );
     }
-    assert_eq!(schema.time().get(), None);
+    assert_eq!(schema.current_time().get(), None);
 
     // Add second transaction 'tx1' from second validator with time 'time1' = 'time0' + 10 sec.
     // After that validators time look like this:
@@ -101,7 +115,7 @@ fn test_exonum_time_service() {
             validators_time_storage.get(pub_key)
         );
     }
-    assert_eq!(schema.time().get(), Some(Time::new(time0)));
+    assert_eq!(schema.current_time().get(), Some(Time::new(time0)));
 
     // Add third transaction 'tx2' from third validator with time 'time2' = 'time1' + 10 sec.
     // After that validators time look like this:
@@ -135,7 +149,52 @@ fn test_exonum_time_service() {
             validators_time_storage.get(pub_key)
         );
     }
-    assert_eq!(schema.time().get(), Some(Time::new(time1)));
+    assert_eq!(schema.current_time().get(), Some(Time::new(time1)));
+}
+
+// A struct that provides the node with the current time.
+#[derive(Debug)]
+struct MyTimeProvider;
+impl TimeProvider for MyTimeProvider {
+    fn current_time(&self) -> SystemTime {
+        UNIX_EPOCH
+    }
+}
+
+#[test]
+fn test_mock_provider() {
+    // Create a simple testkit network.
+    let mut testkit = TestKitBuilder::validator()
+        .with_service(TimeService::with_provider(
+            Box::new(MyTimeProvider) as Box<TimeProvider>,
+        ))
+        .create();
+
+    // Get the validator public key.
+    let validator_public_key = &testkit.network().validators().to_vec()[0]
+        .public_keys()
+        .service_key;
+
+    let snapshot = testkit.snapshot();
+    let schema = TimeSchema::new(snapshot);
+
+    // Check that the blockchain does not contain time.
+    assert_eq!(schema.current_time().get(), None);
+    // Check that the time for the validator is unknown.
+    assert_eq!(schema.validators_time().get(validator_public_key), None);
+
+    // Create two blocks.
+    testkit.create_blocks_until(Height(2));
+
+    let snapshot = testkit.snapshot();
+    let schema = TimeSchema::new(snapshot);
+
+    // Check that the time in the blockchain and for the validator has been updated.
+    assert_eq!(schema.current_time().get(), Some(Time::new(UNIX_EPOCH)));
+    assert_eq!(
+        schema.validators_time().get(validator_public_key),
+        Some(Time::new(UNIX_EPOCH))
+    );
 }
 
 #[test]
@@ -165,12 +224,15 @@ fn test_selected_time_less_than_time_in_storage() {
     let snapshot = testkit.snapshot();
     let schema = TimeSchema::new(snapshot);
 
-    assert!(schema.time().get().is_some());
+    assert!(schema.current_time().get().is_some());
     assert!(schema.validators_time().get(pub_key_0).is_some());
     assert!(schema.validators_time().get(pub_key_1).is_none());
-    assert_eq!(schema.time().get(), schema.validators_time().get(pub_key_0));
+    assert_eq!(
+        schema.current_time().get(),
+        schema.validators_time().get(pub_key_0)
+    );
 
-    if let Some(time_in_storage) = schema.time().get() {
+    if let Some(time_in_storage) = schema.current_time().get() {
         let time_tx = time_in_storage.time() - Duration::new(10, 0);
         let tx = {
             TxTime::new(time_tx, pub_key_1, sec_key_1)
@@ -180,10 +242,13 @@ fn test_selected_time_less_than_time_in_storage() {
 
     let snapshot = testkit.snapshot();
     let schema = TimeSchema::new(snapshot);
-    assert!(schema.time().get().is_some());
+    assert!(schema.current_time().get().is_some());
     assert!(schema.validators_time().get(pub_key_0).is_some());
     assert!(schema.validators_time().get(pub_key_1).is_some());
-    assert_eq!(schema.time().get(), schema.validators_time().get(pub_key_0));
+    assert_eq!(
+        schema.current_time().get(),
+        schema.validators_time().get(pub_key_0)
+    );
 }
 
 #[test]
@@ -199,7 +264,7 @@ fn test_creating_transaction_is_not_validator() {
 
     let snapshot = testkit.snapshot();
     let schema = TimeSchema::new(snapshot);
-    assert!(schema.time().get().is_none());
+    assert!(schema.current_time().get().is_none());
     assert!(schema.validators_time().get(&pub_key).is_none());
 }
 
@@ -221,7 +286,7 @@ fn test_transaction_time_less_than_validator_time_in_storage() {
     let snapshot = testkit.snapshot();
     let schema = TimeSchema::new(snapshot);
 
-    assert_eq!(schema.time().get(), Some(Time::new(time0)));
+    assert_eq!(schema.current_time().get(), Some(Time::new(time0)));
     assert_eq!(
         schema.validators_time().get(pub_key),
         Some(Time::new(time0))
@@ -235,7 +300,7 @@ fn test_transaction_time_less_than_validator_time_in_storage() {
     let snapshot = testkit.snapshot();
     let schema = TimeSchema::new(snapshot);
 
-    assert_eq!(schema.time().get(), Some(Time::new(time0)));
+    assert_eq!(schema.current_time().get(), Some(Time::new(time0)));
     assert_eq!(
         schema.validators_time().get(pub_key),
         Some(Time::new(time0))
