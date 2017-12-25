@@ -36,7 +36,7 @@ fn main() {
 }
 ```
 
-[Read more...](tutorial)
+[Read more...][tutorial]
 
 ## License
 
