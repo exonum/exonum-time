@@ -15,26 +15,28 @@ and keep its current value in the blockchain.
 
 ## The Problem
 
-Implementing the business logic of practical solutions requires that one should be able to navigate the calendar time. 
+Implementing the business logic of practical solutions requires that one should be able to access the calendar time. 
 Said time should meet the following criteria:
 
-* **Reliability**. 
+* **Reliability**.
 The time value must be tolerant to the malicious behavior of Byzantine nodes and  external attacks.
 
-* **Determinateness**. 
-The time must be the same on all nodes to ensure that transactions are executed in a deterministic manner. 
+* **Determinateness**.
+ The time must be the same on all the nodes to ensure that transactions are executed in a deterministic manner. 
 This means that the time should be written in the Exonum blockchain storage. 
 Thus, the "current" time will be changing similarly on all nodes during execution of transactions, 
-including during their update.
+including during nodes update.
 
-* **Sufficient accuracy**. 
-The specified time should be fairly accurate. 
-In practice, an acceptable deviation is a few seconds (up to a minute). 
-The time in Bitcoin headers is updated every 10 or more minutes and can, in principle, 
-differ by hours from the real time, so using Bitcoin as a time oracle is not expedient.
+* **Sufficient accuracy**.
+ The specified time should be fairly accurate. 
+In practice, an acceptable deviation is a few seconds (up to a minute).
 
-* **Monotony**. 
-A pragmatic requirement, which simplifies use of time when implementing the business logic.
+* **Monotony**.
+ A pragmatic requirement, which simplifies use of time when implementing the business logic.
+
+Thus, due to the sufficient accuracy requirement the service cannot use median time-past from Bitcoin. 
+Indeed, the time in Bitcoin headers is updated every 10 or more minutes and can, in principle, 
+differ by hours from the real time.
 
 ## Solution
 
@@ -124,8 +126,8 @@ but the time must change monotonously).
 5. All non-validator nodes are filtered off by the public keys 
 (since the validators list can change, the index may contain time values ​​for non-valid validators).
 
-6. The number of the remaining values must be greater than _`2f + 1`_ 
-(where _`f = n / 3`_ - the maximum number of Byzantine validators).
+6. The number of the remaining values must be equal or greater than _`2f + 1`_ 
+(where _`f = (n - 1) / 3`_ - the maximum number of Byzantine validators).
 
 7. The resulting list is sorted down from the largest value to the lowest one.
 
@@ -137,7 +139,7 @@ Thus, the consolidated time can be updated after each transaction with the actua
 taking into account the possibility of change in the validators list, 
 ensuring monotony of such time flow and being tolerant to the malicious behavior of the Byzantine nodes.
 
-It is clear that in a system with no more than f Byzantine nodes, any time in the _`[f + 1, 2f + 1]`_ interval is:
+It is clear that in a system with no more than _`f`_ Byzantine nodes, any time in the _`[f + 1, 2f + 1]`_ interval is:
 
 * either the time of an honest node
 
@@ -145,13 +147,13 @@ It is clear that in a system with no more than f Byzantine nodes, any time in th
 (and therefore such a time can be considered reliable)
 
 For practical reasons, we always choose the _`f + 1`_ timestamp, 
-since this value is reliable and at the same time the most relevant.
+since this value is reliable and at the same time the most recent one.
 
 Potentially, the validator nodes can generate and send a transaction to update the time any moment, however, 
 in the current implementation the nodes send the transaction after commit of each block.
 
 At the time when a new blockchain is launched, 
-the consolidated time is unknown until the transactions from at least f + 1 validator nodes are processed. 
+the consolidated time is unknown until the transactions from at least _`2f + 1`_ validator nodes are processed. 
 Further in the course of blockchain operation this time will strictly grow monotonously.
 
 ## Usage
@@ -251,7 +253,7 @@ The service has one endpoint per Public API and Private API:
 
 All REST endpoints share the same base path, denoted **{base_path}**, equal to `api/services/exonum_time/v1`.
 
-!!! tip See [Service][service] for a description of types of endpoints in service.
+!!! tip See [Service][service] for a description of types of endpoints in the service.
 
 #### Current time
 
