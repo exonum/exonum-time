@@ -6,10 +6,10 @@ import it from the external world to the blockchain
 and keep its current value in the blockchain.
 
 * [The Problem](#the-problem)
-* [Solution](#solution)
+* [Rationale](#rationale)
     + [Integration with Consensus](#integration-with-consensus)
     + [Time Oracle Service](#time-oracle-service)
-* [Requirements](#requirements)
+* [Assumptions](#assumptions)
 * [Implementation of the Time Oracle Service](#implementation-of-the-time-oracle-service)
 * [Usage](#usage)
 
@@ -18,27 +18,28 @@ and keep its current value in the blockchain.
 Implementing the business logic of practical solutions requires that one should be able to access the calendar time. 
 Said time should meet the following criteria:
 
-* **Reliability**.
-The time value must be tolerant to the malicious behavior of Byzantine nodes and  external attacks.
++ **Reliability**.
+The time value must be tolerant to the malicious behavior of validator nodes.
 
-* **Determinateness**.
++ **Agreement**.
  The time must be the same on all the nodes to ensure that transactions are executed in a deterministic manner. 
 This means that the time should be written in the Exonum blockchain storage. 
 Thus, the "current" time will be changing similarly on all nodes during execution of transactions, 
 including during nodes update.
 
-* **Sufficient accuracy**.
++ **Sufficient accuracy**.
  The specified time should be fairly accurate. 
 In practice, an acceptable deviation is a few seconds (up to a minute).
 
-* **Monotony**.
- A pragmatic requirement, which simplifies use of time when implementing the business logic.
++ **Monotony**.
+ The time value should only increase. 
+A pragmatic requirement, which simplifies use of time when implementing the business logic.
 
 Thus, due to the sufficient accuracy requirement the service cannot use median time-past from Bitcoin. 
 Indeed, the time in Bitcoin headers is updated every 10 or more minutes and can, in principle, 
 differ by hours from the real time.
 
-## Solution
+## Rationale
 
 Two approaches were considered for obtaining reliable time in Exonum: 
 _integration with consensus_ and _a time oracle service_.
@@ -92,7 +93,7 @@ receipt thereof by the client requires additional cryptographic checks.
 **It was decided that the time oracle should be implemented as a separate service to develop it separately 
 from the core and not complicate the consensus code.**
 
-## Requirements
+## Assumptions
 
 **Both solutions assume that the local time on all validator nodes is reliable.** 
 If the local time on the validator machine is incorrect, **such node is considered Byzantine**. 
@@ -106,14 +107,14 @@ To obtain local, reliable time external solutions like tlsdate, roughtime, gps-c
 
 **The data schema** of such a service consists of two indices:
 
-* **`time: Entry<Time>`** - is the consolidated time we target at.
++ `time: Entry<Time>` - is the consolidated time we target at.
 
-* **`validators_time: MapIndex<PublicKey, SystemTime>`** - the last known local time of the validator nodes.
++ `validators_time: MapIndex<PublicKey, SystemTime>` - the last known local time of the validator nodes.
 
 The service implements only one transaction consisting of the actual validator’s time and signed with its key. 
 The logic of such transaction execution is as follows:
 
-1. It is checked that _`PublicKey`_ belongs to the validator.
+1. It is checked that `PublicKey` belongs to the validator.
 
 2. The time specified in the transaction is greater than said validator’s time specified in the storage 
 (transactions potentially can be executed in the order reverse to their creation order, 
@@ -121,39 +122,39 @@ but the time must change monotonously).
 
 3. The time for this validator is updated in the storage.
 
-4. All values ​​from the _`validators_time`_ index are fetched.
+4. All values ​​from the `validators_time` index are fetched.
 
 5. All non-validator nodes are filtered off by the public keys 
 (since the validators list can change, the index may contain time values ​​for non-valid validators).
 
-6. The number of the remaining values must be equal or greater than _`2f + 1`_ 
-(where _`f = (n - 1) / 3`_ - the maximum number of Byzantine validators).
+6. The number of the remaining values must be equal or greater than `2f + 1` 
+(where `f = (n - 1) / 3` - the maximum number of Byzantine validators).
 
 7. The resulting list is sorted down from the largest value to the lowest one.
 
-8. _`f + 1`_ time in the resulting list is taken.
+8. `f + 1` time in the resulting list is taken.
 
-9. If the time from `8.` is larger than _`time`_, the value in the storage is replaced with the resulting value.
+9. If the time from `8.` is larger than `time`, the value in the storage is replaced with the resulting value.
 
 Thus, the consolidated time can be updated after each transaction with the actual time from any validator node, 
 taking into account the possibility of change in the validators list, 
 ensuring monotony of such time flow and being tolerant to the malicious behavior of the Byzantine nodes.
 
-It is clear that in a system with no more than _`f`_ Byzantine nodes, any time in the _`[f + 1, 2f + 1]`_ interval is:
+It is clear that in a system with no more than `f` Byzantine nodes, any time in the `[f + 1, 2f + 1]` interval is:
 
 * either the time of an honest node
 
 * or the time in the interval between the timestamps of two honest nodes 
 (and therefore such a time can be considered reliable)
 
-For practical reasons, we always choose the _`f + 1`_ timestamp, 
+For practical reasons, we always choose the `f + 1` timestamp, 
 since this value is reliable and at the same time the most recent one.
 
 Potentially, the validator nodes can generate and send a transaction to update the time any moment, however, 
 in the current implementation the nodes send the transaction after commit of each block.
 
 At the time when a new blockchain is launched, 
-the consolidated time is unknown until the transactions from at least _`2f + 1`_ validator nodes are processed. 
+the consolidated time is unknown until the transactions from at least `2f + 1` validator nodes are processed. 
 Further in the course of blockchain operation this time will strictly grow monotonously.
 
 ## Usage
@@ -210,14 +211,14 @@ which must be executed no later than the specified time
 ```rust
 message! {
     struct Tx {
-        …
+        ...
         field time: SystemTime	 [00 => 12]
-        …
+        ...
     }
 }
  
 impl Transaction for Tx {
-    …
+    ...
     fn execute(&self, view: &mut Fork) {
         // Import schema.
         let time_schema = exonum_time::TimeSchema::new(&view);
@@ -228,9 +229,9 @@ impl Transaction for Tx {
             }
             _ => { ... }
         }
-        …
+        ...
     }
-    … 
+    ... 
 }
 ```
 
@@ -242,7 +243,7 @@ let validators_time = time_schema.validators_time();
 ```
 
 The full implementation of the service, which uses the time oracle, 
-is in the [`directory`](examples/simple_service.rs).
+is in the [`directory`][directory].
 For testing the service [`exonum-testkit`][exonum-testkit] is used.
 
 ### REST API
@@ -321,5 +322,6 @@ Example of JSON response:
 
 `"Validators time database is empty"` is returned if the time for the validators is unknown.
 
+[directory]: examples/simple_service.rs
 [exonum-testkit]: https://github.com/exonum/exonum-testkit
 [service]: https://github.com/exonum/exonum-doc/blob/master/src/architecture/services.md
