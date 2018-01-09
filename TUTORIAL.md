@@ -22,17 +22,17 @@ Said time should meet the following criteria:
 The time value must be tolerant to the malicious behavior of validator nodes.
 
 + **Agreement**.
- The time must be the same on all the nodes to ensure that transactions are executed in a deterministic manner. 
+The time must be the same on all the nodes to ensure that transactions are executed in a deterministic manner. 
 This means that the time should be written in the Exonum blockchain storage. 
 Thus, the "current" time will be changing similarly on all nodes during execution of transactions, 
 including during nodes update.
 
 + **Sufficient accuracy**.
- The specified time should be fairly accurate. 
+The specified time should be fairly accurate. 
 In practice, an acceptable deviation is a few seconds (up to a minute).
 
 + **Monotony**.
- The time value should only increase. 
+The time value should only increase. 
 A pragmatic requirement, which simplifies use of time when implementing the business logic.
 
 Thus, due to the sufficient accuracy requirement the service cannot use median time-past from Bitcoin. 
@@ -250,7 +250,8 @@ For testing the service [`exonum-testkit`][exonum-testkit] is used.
 
 The service has one endpoint per Public API and Private API:
 * [Get current time](#current-time)
-* [Get validators time](#validators-time)
+* [Get current validators times](#current-validators-times)
+* [Get all validators times](#all-validators-times)
 
 All REST endpoints share the same base path, denoted **{base_path}**, equal to `api/services/exonum_time/v1`.
 
@@ -274,22 +275,20 @@ Example of JSON response:
 
 ```None
 {
-  "time": {
-    "nanos": 328946000,
-    "secs": "1514207155"
-  }
+  "nanos_since_epoch": 15555000,
+  "secs_since_epoch": 1516106164
 }
 ```
 
 `null` is returned if there is no consolidated time.
 
-#### Validators time
+#### Current validators times
 
 ```None
-GET {base_path}/validators_time
+GET {base_path}/validators_times
 ```
 
-Returns the latest timestamps indicated by all validator nodes.
+Returns the latest timestamps indicated by current validator nodes.
 
 ##### Parameters
 
@@ -302,25 +301,60 @@ Example of JSON response:
 ```None
 [
   {
-    "52baa9d4c4029b925cedf1a1515c874a68e9133102d0823a6de88eb9c6694a59": {
-      "time": {
-        "nanos": 895228000,
-        "secs": "1514209166"
-      }
+    "public_key": "83955565ee605f68fe334132b5ae33fe4ae9be2d85fbe0bd9d56734ad4ffdebd",
+    "time": {
+      "nanos_since_epoch": 626107000,
+      "secs_since_epoch": 1516011501
     }
   },
   {
-    "f6753f4b130ce098b1322a6aac6accf2d5770946c6db273eab092197a5320717": {
-      "time": {
-        "nanos": 581130000,
-        "secs": "1514209665"
-      }
+    "public_key": "f6753f4b130ce098b1322a6aac6accf2d5770946c6db273eab092197a5320717",
+    "time": {
+      "nanos_since_epoch": 581130000,
+      "secs_since_epoch": 1514209665
+    }
+  },
+  {
+    "public_key": "52baa9d4c4029b925cedf1a1515c874a68e9133102d0823a6de88eb9c6694a59",
+    "time": null
+  }  
+]
+```
+
+### All validators times
+
+```None
+GET {base_path}/validators_times/all
+```
+
+Returns the latest timestamps indicated by all validator nodes for which time is known.
+
+#### Parameters
+
+None.
+
+#### Response
+
+Example of JSON response:
+
+```None
+[
+  {
+    "public_key": "83955565ee605f68fe334132b5ae33fe4ae9be2d85fbe0bd9d56734ad4ffdebd",
+    "time": {
+      "nanos_since_epoch": 626107000,
+      "secs_since_epoch": 1516011501
+    }
+  },
+  {
+    "public_key": "f6753f4b130ce098b1322a6aac6accf2d5770946c6db273eab092197a5320717",
+    "time": {
+      "nanos_since_epoch": 581130000,
+      "secs_since_epoch": 1514209665
     }
   }
 ]
 ```
-
-`"Validators time database is empty"` is returned if the time for the validators is unknown.
 
 [tlsdate]: https://github.com/ioerror/tlsdate
 [roughtime]: https://roughtime.googlesource.com/roughtime
