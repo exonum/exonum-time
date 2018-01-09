@@ -101,7 +101,7 @@ Therefore, both solutions require use of a reliable time source locally on each 
 The solutions considered here provide only an agreed time on the basis of a reliable local time of the validator nodes, 
 taking into account possible malicious behavior of up to 1/3 Byzantine nodes.
 
-To obtain local, reliable time external solutions like tlsdate, roughtime, gps-clock, etc. can be applied.
+To obtain local, reliable time external solutions like [tlsdate][], [roughtime][], gps-clock, etc. can be applied.
 
 ## Implementation of the Time Oracle Service
 
@@ -322,6 +322,8 @@ Example of JSON response:
 
 `"Validators time database is empty"` is returned if the time for the validators is unknown.
 
+[tlsdate]: https://github.com/ioerror/tlsdate
+[roughtime]: https://roughtime.googlesource.com/roughtime
 [directory]: examples/simple_service.rs
 [exonum-testkit]: https://github.com/exonum/exonum-testkit
 [service]: https://github.com/exonum/exonum-doc/blob/master/src/architecture/services.md
