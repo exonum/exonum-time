@@ -11,6 +11,7 @@ and keep its current value in the blockchain.
     + [Time Oracle Service](#time-oracle-service)
 * [Assumptions](#assumptions)
 * [Implementation of the Time Oracle Service](#implementation-of-the-time-oracle-service)
+* [REST API](#rest-api)
 
 ## The Problem
 
@@ -156,5 +157,116 @@ At the time when a new blockchain is launched,
 the consolidated time is unknown until the transactions from at least `2f + 1` validator nodes are processed. 
 Further in the course of blockchain operation this time will strictly grow monotonously.
 
+## REST API
+
+The service has one endpoint per Public API and Private API:
+* [Get current time](#current-time)
+* [Get current validators times](#current-validators-times)
+* [Get all validators times](#all-validators-times)
+
+All REST endpoints share the same base path, denoted **{base_path}**, equal to `api/services/exonum_time/v1`.
+
+**Tip.** See [Service][services] for a description of types of endpoints in the service.
+
+### Current time
+
+```None
+GET {base_path}/current_time
+```
+
+Returns consolidated time.
+
+#### Parameters
+
+None.
+
+#### Response
+
+Example of JSON response:
+
+```None
+{
+  "nanos_since_epoch": 15555000,
+  "secs_since_epoch": 1516106164
+}
+```
+
+`null` is returned if there is no consolidated time.
+
+### Current validators times
+
+```None
+GET {base_path}/validators_times
+```
+
+Returns the latest timestamps indicated by current validator nodes.
+
+#### Parameters
+
+None.
+
+#### Response
+
+Example of JSON response:
+
+```None
+[
+  {
+    "public_key": "83955565ee605f68fe334132b5ae33fe4ae9be2d85fbe0bd9d56734ad4ffdebd",
+    "time": {
+      "nanos_since_epoch": 626107000,
+      "secs_since_epoch": 1516011501
+    }
+  },
+  {
+    "public_key": "f6753f4b130ce098b1322a6aac6accf2d5770946c6db273eab092197a5320717",
+    "time": {
+      "nanos_since_epoch": 581130000,
+      "secs_since_epoch": 1514209665
+    }
+  },
+  {
+    "public_key": "52baa9d4c4029b925cedf1a1515c874a68e9133102d0823a6de88eb9c6694a59",
+    "time": null
+  }  
+]
+```
+
+### All validators times
+
+```None
+GET {base_path}/validators_times/all
+```
+
+Returns the latest timestamps indicated by all validator nodes for which time is known.
+
+#### Parameters
+
+None.
+
+#### Response
+
+Example of JSON response:
+
+```None
+[
+  {
+    "public_key": "83955565ee605f68fe334132b5ae33fe4ae9be2d85fbe0bd9d56734ad4ffdebd",
+    "time": {
+      "nanos_since_epoch": 626107000,
+      "secs_since_epoch": 1516011501
+    }
+  },
+  {
+    "public_key": "f6753f4b130ce098b1322a6aac6accf2d5770946c6db273eab092197a5320717",
+    "time": {
+      "nanos_since_epoch": 581130000,
+      "secs_since_epoch": 1514209665
+    }
+  }
+]
+```
+
 [tlsdate]: https://github.com/ioerror/tlsdate
 [roughtime]: https://roughtime.googlesource.com/roughtime
+[services]: https://github.com/exonum/exonum-doc/blob/master/src/architecture/services.md

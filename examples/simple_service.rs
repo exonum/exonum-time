@@ -95,7 +95,7 @@ impl Transaction for TxMarker {
             let time_schema = TimeSchema::new(&view);
             // The time in the transaction should be less than in the blockchain.
             match time_schema.time().get() {
-                Some(ref current_time) if current_time.time() < self.time() => {
+                Some(ref current_time) if current_time.time() > self.time() => {
                     return;
                 }
                 _ => {}
@@ -164,7 +164,12 @@ fn main() {
     let keypair1 = gen_keypair();
     let keypair2 = gen_keypair();
     let keypair3 = gen_keypair();
-    let tx1 = TxMarker::new(&keypair1.0, 1, UNIX_EPOCH, &keypair1.1);
+    let tx1 = TxMarker::new(
+        &keypair1.0,
+        1,
+        UNIX_EPOCH + Duration::new(10, 0),
+        &keypair1.1,
+    );
     let tx2 = TxMarker::new(
         &keypair2.0,
         2,
@@ -182,6 +187,6 @@ fn main() {
     let snapshot = testkit.snapshot();
     let schema = MarkerSchema::new(snapshot);
     assert_eq!(schema.marks().get(&keypair1.0), Some(1));
-    assert_eq!(schema.marks().get(&keypair2.0), None);
-    assert_eq!(schema.marks().get(&keypair3.0), Some(3));
+    assert_eq!(schema.marks().get(&keypair2.0), Some(2));
+    assert_eq!(schema.marks().get(&keypair3.0), None);
 }
