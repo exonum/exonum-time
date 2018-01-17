@@ -218,7 +218,7 @@ impl TimeApi {
         let self_ = self.clone();
         let get_validators_time = move |req: &mut Request| self_.get_validators_time(req);
         router.get(
-            "/validators_time",
+            "/v1/validators_time",
             get_validators_time,
             "get_validators_time",
         );
@@ -229,7 +229,7 @@ impl Api for TimeApi {
     fn wire(&self, router: &mut Router) {
         let self_ = self.clone();
         let get_current_time = move |req: &mut Request| self_.get_current_time(req);
-        router.get("/current_time", get_current_time, "get_current_time");
+        router.get("/v1/current_time", get_current_time, "get_current_time");
     }
 }
 
